@@ -104,7 +104,7 @@ class CF(object):
         """
         self.Ybar = sparse.coo_matrix((self.Ybar_data[:, 2], 
                                        (self.Ybar_data[:, 1], self.Y_data[:, 0])), 
-                                       (self.n_items, self.n_users))
+                                       (self.n_items, self.n_users)).tocsr()
         
     def __similarity(self):
         self.S = self.dist_fun(self.Ybar.T, self.Ybar.T)
@@ -122,7 +122,7 @@ class CF(object):
         ids = np.where(self.Y_data[:, 1] == i)[0].astype(np.int32)
 
         #第二步：找到所有对物品 i 评分的用户
-        users_rated_i = np.where(self.Y_data[ids, 0]).astype(np.int32)
+        users_rated_i = np.where(self.Y_data[ids, 0])[0].astype(np.int32)
 
         #第三步：计算当前用户与其他已对物品 i 评分的用户之间的相似度
         similarity = self.S[u, users_rated_i]
@@ -146,7 +146,7 @@ class CF(object):
         return self.__pred(i, u, normalize)
     
     def recommendation(self, u, normalized = 1):
-        ids = np.where(self.Y_data[:, 0] == u)[0]
+        ids = np.where(self.Y_data[:, 0] == u)[0].astype(np.int32)
         items_rated_by_u = self.Y_data[ids, 1].tolist()
         recommended_items = []
         for i in range(self.n_items):
