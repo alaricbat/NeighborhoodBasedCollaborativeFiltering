@@ -38,7 +38,7 @@ class CF(object):
     def add(self, new_data):
         self.Y_data = np.concatenate((self.Y_data, new_data), axis=0)
 
-    def normalize_Y(self):
+    def __normalize_Y(self):
         users = self.Y_data[:, 0]
         self.Ybar_data = self.Y_data.copy()
         self.mu = np.zeros((self.n_users,))
@@ -106,34 +106,34 @@ class CF(object):
                                        (self.Ybar_data[:, 1], self.Y_data[:, 0])), 
                                        (self.n_items, self.n_users))
         
-    def similarity(self):
+    def __similarity(self):
         self.S = self.dist_fun(self.Ybar.T, self.Ybar.T)
 
-    def refresh(self):
-        self.normalize_Y()
-        self.similarity()
+    def __refresh(self):
+        self.__normalize_Y()
+        self.__similarity()
 
     def fit(self):
-        self.refresh()
+        self.__refresh()
 
     def __pred(self, u, i, normalized = 1):
         
-        #Step 1: Items of i
+        #第一步：物品 i 的项目
         ids = np.where(self.Y_data[:, 1] == i)[0].astype(np.int32)
 
-        #Step 2: Find all users who rated i
+        #第二步：找到所有对物品 i 评分的用户
         users_rated_i = np.where(self.Y_data[ids, 0]).astype(np.int32)
 
-        #Step 3: Find similarity between the current user and others who aleady rated i
+        #第三步：计算当前用户与其他已对物品 i 评分的用户之间的相似度
         similarity = self.S[u, users_rated_i]
 
-        #Step 4: Find the k most similarity users
+        #第四步：找出 k 个最相似的用户
         a = np.argsort(similarity)[-self.k:]
 
-        #And the corresponding similarity level
+        #第五步：以及相应的相似度水平 (And the corresponding similarity level)
         nearest_s = similarity[a]
 
-        #How did each of 'near' users rated them i
+        #每个最相似的用户如何对物品 i 评分 - How did each of 'near' users rated them i
         r = self.Ybar[i, users_rated_i[a]]
         if normalized:
             #Add a small number, for instance, 1e-8, to avoid dividing by 0
@@ -144,3 +144,22 @@ class CF(object):
     def pred(self, u, i, normalize = 1):
         if self.uuCF: return self.__pred(u, i, normalize)
         return self.__pred(i, u, normalize)
+    
+    def recommendation(self, u, normalized = 1):
+        ids = np.where(self.Y_data[:, 0] == u)[0]
+        items_rated_by_u = self.Y_data[ids, 1].tolist()
+        recommended_items = []
+        for i in range(self.n_items):
+            if i not in items_rated_by_u:
+                rating = self.__pred(u, i, normalized)
+                if rating > 0:
+                    recommended_items.append(i)
+        return recommended_items
+    
+    def print_recommendation(self):
+        for u in range(self.n_users):
+            recommended_items = self.recommendation(u)
+            if self.uuCF:
+                print('Recommend item(s): ', recommended_items, 'to user', u)
+            else: 
+                print('Recommend item', u, 'to user(s) : ', recommended_items)
